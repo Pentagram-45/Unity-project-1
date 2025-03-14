@@ -6,6 +6,8 @@ Shader "Custom/NewSurfaceShader"
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
+        _OutlineColor ("OutlineColor", Color) = (0,0,0,0)
+        _OutlineWidth ("OutlineWidth", Range(0,1)) = 0.1
     }
     SubShader
     {
@@ -15,10 +17,9 @@ Shader "Custom/NewSurfaceShader"
         Pass
         {
             Name "OutlinePass"
-            // 渲染背面
             Cull Front
             ZWrite On
-            ZTest LessEqual
+            ZTest LEqual
 
             CGPROGRAM
             #pragma vertex vert
@@ -42,18 +43,18 @@ Shader "Custom/NewSurfaceShader"
             v2f vert(appdata v)
             {
                 v2f o;
-                // 将法线变换到世界空间
+                // change to world normal
                 float3 worldNormal = UnityObjectToWorldNormal(v.normal);
-                // 沿法线方向外推
+                // push out
                 float3 offsetPos = v.vertex.xyz + worldNormal * _OutlineWidth;
-                // 转换到裁剪空间
+                // change to clip pos
                 o.pos = UnityObjectToClipPos(float4(offsetPos, 1));
                 return o;
             }
 
             fixed4 frag(v2f i) : SV_Target
             {
-                // 纯色填充轮廓
+                //fill the outline
                 return _OutlineColor;
             }
             ENDCG
@@ -90,6 +91,8 @@ Shader "Custom/NewSurfaceShader"
             fixed4 c = tex2D (_MainTex, IN.uv_MainTex) * _Color;
             o.Albedo = c.rgb;
             // Metallic and smoothness come from slider variables
+            o.Metallic = _Metallic;
+            o.Smoothness = _Glossiness;
             o.Alpha = c.a;
         }
 
@@ -97,7 +100,7 @@ Shader "Custom/NewSurfaceShader"
             half NdotL = dot(s.Normal, lightDir);
             NdotL = max(0,NdotL);
 
-            half diff = step(0.2, NdotL);
+            half diff = step(0.3, NdotL);
 
             half3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
             half3 diffuse = _LightColor0.rgb * diff;
